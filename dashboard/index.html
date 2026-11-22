@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Token Radar — pre-token protocols ranked by implied value</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<a class="skip" href="#board">Skip to the board</a>
+<header class="masthead">
+  <div class="masthead-inner">
+    <p class="kicker">Token Radar · model radar-2</p>
+    <h1>Which pre-token protocol is worth farming next?</h1>
+    <p class="lede" id="lede">Loading the snapshot…</p>
+  </div>
+</header>
+<main>
+  <section class="controls" aria-label="Board controls">
+    <label>Search
+      <input id="q" type="search" placeholder="Protocol name or slug" autocomplete="off">
+    </label>
+    <label>Category
+      <select id="category"><option value="">All categories</option></select>
+    </label>
+    <label>Chain
+      <select id="chain"><option value="">All chains</option></select>
+    </label>
+    <div class="tabs" role="tablist" aria-label="Protocol set">
+      <button id="tab-pre" role="tab" aria-selected="true">Pre-token</button>
+      <button id="tab-live" role="tab" aria-selected="false">Live token</button>
+    </div>
+  </section>
+  <section class="model" aria-label="How the ranking works">
+    <h2>How the ranking works</h2>
+    <p>Every number below comes from one sealed snapshot of the protocol universe (<span id="asof">—</span>). A protocol is ranked only when the snapshot records no token for it — no market cap, no CoinGecko id, no symbol — and it is not a wrapped, staked, bridged or exchange product of a token that already trades. The board covers the whole watchlist plus every other protocol the same rule keeps, at any size.</p>
+    <p class="formula">implied&nbsp;value = TVL × category&nbsp;multiple × growth&nbsp;multiplier × maturity&nbsp;multiplier × breadth&nbsp;multiplier</p>
+    <ul>
+      <li><strong>Category multiple</strong> — the median market-cap / TVL of the live-token protocols in the same category, read from this same snapshot (at least 3 comparables, else the snapshot-wide median), clamped to 0.05–0.60.</li>
+      <li><strong>Growth multiplier</strong> — 1 + (7-day TVL change, clamped to −60…+120%) × 0.5.</li>
+      <li><strong>Maturity multiplier</strong> — 0.6 + min(age, 3 years) / 3 years × 0.4; a protocol with no listing date counts as 1 year old.</li>
+      <li><strong>Breadth multiplier</strong> — 1 + 0.02 per extra chain beyond the first, at most 1.20.</li>
+    </ul>
+    <p>The live-token tab shows what the market itself says those protocols are worth, for comparison: a live token's market cap is not a model's guess. Farm plans are per protocol, with a cost and a time on every step.</p>
+  </section>
+  <section id="board" aria-label="Protocol board">
+    <p class="count" id="count"></p>
+    <div class="table-wrap">
+      <table id="table">
+        <thead>
+          <tr>
+            <th><button data-sort="rank" aria-label="Sort by rank">Rank</button></th>
+            <th><button data-sort="name" aria-label="Sort by protocol">Protocol</button></th>
+            <th><button data-sort="tvl_usd" aria-label="Sort by TVL">TVL</button></th>
+            <th><button data-sort="change_7d" aria-label="Sort by 7-day change">7d</button></th>
+            <th><button data-sort="age_days" aria-label="Sort by age">Age</button></th>
+            <th><button data-sort="category_multiple" aria-label="Sort by category multiple">Cat. mult.</button></th>
+            <th><button data-sort="implied_value_usd" aria-label="Sort by implied value">Implied value</button></th>
+            <th><button data-sort="token" aria-label="Sort by token status">Token</button></th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <p class="empty" id="empty" hidden>No protocol matches this filter.</p>
+  </section>
+</main>
+<dialog id="detail" aria-label="Protocol detail">
+  <form method="dialog"><button class="close" aria-label="Close detail">Close ×</button></form>
+  <div id="detail-body"></div>
+</dialog>
+<footer>
+  <p>Token Radar · model radar-2 · snapshot <span id="asof2">—</span> · source: DefiLlama protocols list · no live data, no network calls.</p>
+</footer>
+<noscript><p class="noscript">This board needs JavaScript: the data is in data.js and the page renders it locally.</p></noscript>
+<script src="../data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
