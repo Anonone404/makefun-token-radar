@@ -15,7 +15,6 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync, cpSync, chmodSync, 
 import { join, resolve, dirname } from 'node:path';
 import { buildDossier } from './vendor/makefun-board.ts';
 import { parseSnapshot, buildBoard, buildRadar, boardIssue, dataScript } from './lib/model.ts';
-
 export function parseArgs(argv: string[]): { snapshot: string; out: string } {
   const snapshot = argv[2] ?? '/input/snapshot.json';
   const out = argv[3] ?? '/output';
@@ -96,8 +95,25 @@ export function main(argv: string[]): void {
   writeFileSync(join(out, 'dossier.json'), dossier, { mode: 0o644 });
 
   const watched = snap.watchlist.length;
-  console.log(`Token Radar wrote ${board.length} rows (${watched} watchlist, ${board.length - watched} early) to ${resolve(out)}`);
-  console.log(`Top row: ${board[0]!.name} at $${board[0]!.implied_value_usd.toLocaleString('en-US')}`);
+  const pre = board.filter((r) => r.token_status === 'pre-token');
+  const live = board.filter((r) => r.token_status === 'live');
+  const fmtInt = (n: number): string => n.toLocaleString('en-US');
+  console.log(`Token Radar wrote ${board.length} rows (${pre.length} pre-token launches, ${live.length} live tokens) to ${resolve(out)}`);
+  console.log(`Top launch: ${pre[0]!.name} at $${fmtInt(pre[0]!.implied_value_usd)} implied (launch rank 1, board rank ${pre[0]!.rank})`);
+  console.log(`Top board row: ${board[0]!.name} at $${fmtInt(board[0]!.implied_value_usd)} (${board[0]!.token_status})`);
+  const f = radar.fitted;
+  console.log(`Fitted model radar-3 on ${f.comparables} live comparables: log mcap = ${f.coefficients[0]} + ${f.coefficients[1]}*log TVL + ${f.coefficients[2]}*growth + ${f.coefficients[3]}*log(age+30) + ${f.coefficients[4]}*log chains; R2 ${f.r_squared}`);
+  const v = radar.validation;
+  console.log(`Validation leave-one-out: median error ${v.leave_one_out.median_factor}x, within 2x ${Math.round(v.leave_one_out.within_2x * 100)}%, bias ${v.leave_one_out.bias}`);
+  console.log(`Validation walk-forward: median error ${v.walk_forward.median_factor}x, within 2x ${Math.round(v.walk_forward.within_2x * 100)}%, bias ${v.walk_forward.bias} (train ${v.walk_forward.train_n}, test ${v.walk_forward.test_n})`);
+  console.log(`Validation walk-backward: median error ${v.walk_backward.median_factor}x, within 2x ${Math.round(v.walk_backward.within_2x * 100)}%, bias ${v.walk_backward.bias} (train ${v.walk_backward.train_n}, test ${v.walk_backward.test_n})`);
+  console.log(`Bands P25-P75: x${radar.bands.lo_factor} to x${radar.bands.hi_factor} of the fitted value (log ${radar.bands.loo_q25_log} to ${radar.bands.loo_q75_log}); range holds ${Math.round(radar.bands.range_holds * 100)}% of held-out tokens`);
+  for (const t of radar.term_tests) {
+    console.log(`Term test (drop ${t.term}): leave-one-out ${t.loo_factor}x, walk-forward ${t.walk_forward_factor}x — ${t.kept ? 'kept' : 'DROP'}: ${t.note}`);
+  }
+  console.log(`Launch odds: mature-cohort rate ${radar.odds.mature_rate} (n=${radar.odds.mature_n}); bands ${radar.odds.bands.map((b) => `${b.band} ${b.odds}`).join(', ')}`);
+  console.log(`Verdicts: farm ${radar.verdicts.farm_count}, thin ${radar.verdicts.thin_count}, skip ${radar.verdicts.skip_count}; farm at efficiency >= ${radar.verdicts.farm_at_or_above}, thin at >= ${radar.verdicts.thin_at_or_above}`);
+  console.log(`Coverage: ${board.length} ranked rows, ${radar.unpriced_size} more record a token but no market cap, ${radar.excluded_size} excluded products; watchlist ${watched} all covered`);
 }
 
 main(process.argv);
