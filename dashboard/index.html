@@ -7,15 +7,38 @@
 <link rel="stylesheet" href="app.css">
 </head>
 <body>
-<a class="skip" href="#board">Skip to the board</a>
+<a class="skip-link" href="#board">Skip to the board</a>
 <header class="masthead">
   <div class="masthead-inner">
-    <p class="kicker">Token Radar · model radar-2</p>
+    <p class="kicker">Token Radar · model radar-3 · snapshot 2026-11-14</p>
     <h1>Which pre-token protocol is worth farming next?</h1>
     <p class="lede" id="lede">Loading the snapshot…</p>
   </div>
 </header>
 <main>
+  <section class="stats" id="stats" aria-label="Board at a glance">
+    <div class="stat"><p class="stat-num" id="stat-top">—</p><p class="stat-label" id="stat-top-label">Largest implied launch</p></div>
+    <div class="stat"><p class="stat-num" id="stat-total">—</p><p class="stat-label" id="stat-total-label">Total implied value, all 198 protocols</p></div>
+    <div class="stat"><p class="stat-num" id="stat-top10">—</p><p class="stat-label" id="stat-top10-label">Share held by the top 10</p></div>
+    <div class="stat"><p class="stat-num" id="stat-lead">—</p><p class="stat-label" id="stat-lead-label">Farm verdicts</p></div>
+    <div class="stat"><p class="stat-num" id="stat-miss">—</p><p class="stat-label" id="stat-miss-label">Held-out median miss</p></div>
+    <div class="stat"><p class="stat-num" id="stat-range">—</p><p class="stat-label" id="stat-range-label">Land inside the P25–P75 band</p></div>
+  </section>
+  <section class="accounting" id="accounting" aria-label="Coverage of all 758 protocols">
+    <div class="acct-bar" id="acct-bar" role="img" aria-label="758 protocols accounted for"></div>
+    <ul class="acct-legend" id="acct-legend"></ul>
+    <p class="checks" id="checks"></p>
+  </section>
+  <p class="findings" id="findings"></p>
+  <section class="validation" aria-label="How the model was tested">
+    <h2>How the model was tested</h2>
+    <p class="val-intro">The value model is fitted on the snapshot’s live tokens — and then tested on tokens it never saw. A median error of 3× is the honest level: launch values are hard to predict, and the numbers below say so.</p>
+    <div class="val-cards" id="val-cards"></div>
+    <h3>Every term tested</h3>
+    <div id="term-tests"></div>
+    <p class="term-note">Each row drops one term, refits the model from scratch, and re-runs both held-out tests. The numbers are the median miss with the term gone — compare them with the full model’s 3.32× (leave-one-out) and 3.00× (walk-forward). No term’s removal improves both tests, so every term stays.</p>
+    <p class="val-caveat">Walk-forward matters most: the fit trained on pre-2025 launches underpredicts 2025 launches, so the board’s implied values are probably low for the youngest protocols. Launch odds are base rates from the peers’ record, not forecasts.</p>
+  </section>
   <section class="controls" aria-label="Board controls">
     <label>Search
       <input id="q" type="search" placeholder="Protocol name or slug" autocomplete="off">
@@ -26,22 +49,18 @@
     <label>Chain
       <select id="chain"><option value="">All chains</option></select>
     </label>
+    <label>Verdict
+      <select id="verdict">
+        <option value="">All verdicts</option>
+        <option value="farm">Farm</option>
+        <option value="thin">Thin</option>
+        <option value="skip">Skip</option>
+      </select>
+    </label>
     <div class="tabs" role="tablist" aria-label="Protocol set">
       <button id="tab-pre" role="tab" aria-selected="true">Pre-token</button>
       <button id="tab-live" role="tab" aria-selected="false">Live token</button>
     </div>
-  </section>
-  <section class="model" aria-label="How the ranking works">
-    <h2>How the ranking works</h2>
-    <p>Every number below comes from one sealed snapshot of the protocol universe (<span id="asof">—</span>). A protocol is ranked only when the snapshot records no token for it — no market cap, no CoinGecko id, no symbol — and it is not a wrapped, staked, bridged or exchange product of a token that already trades. The board covers the whole watchlist plus every other protocol the same rule keeps, at any size.</p>
-    <p class="formula">implied&nbsp;value = TVL × category&nbsp;multiple × growth&nbsp;multiplier × maturity&nbsp;multiplier × breadth&nbsp;multiplier</p>
-    <ul>
-      <li><strong>Category multiple</strong> — the median market-cap / TVL of the live-token protocols in the same category, read from this same snapshot (at least 3 comparables, else the snapshot-wide median), clamped to 0.05–0.60.</li>
-      <li><strong>Growth multiplier</strong> — 1 + (7-day TVL change, clamped to −60…+120%) × 0.5.</li>
-      <li><strong>Maturity multiplier</strong> — 0.6 + min(age, 3 years) / 3 years × 0.4; a protocol with no listing date counts as 1 year old.</li>
-      <li><strong>Breadth multiplier</strong> — 1 + 0.02 per extra chain beyond the first, at most 1.20.</li>
-    </ul>
-    <p>The live-token tab shows what the market itself says those protocols are worth, for comparison: a live token's market cap is not a model's guess. Farm plans are per protocol, with a cost and a time on every step.</p>
   </section>
   <section id="board" aria-label="Protocol board">
     <p class="count" id="count"></p>
@@ -49,20 +68,39 @@
       <table id="table">
         <thead>
           <tr>
-            <th><button data-sort="rank" aria-label="Sort by rank">Rank</button></th>
+            <th><button data-sort="launch_rank" aria-label="Sort by launch rank">Launch rank</button></th>
             <th><button data-sort="name" aria-label="Sort by protocol">Protocol</button></th>
             <th><button data-sort="tvl_usd" aria-label="Sort by TVL">TVL</button></th>
             <th><button data-sort="change_7d" aria-label="Sort by 7-day change">7d</button></th>
             <th><button data-sort="age_days" aria-label="Sort by age">Age</button></th>
-            <th><button data-sort="category_multiple" aria-label="Sort by category multiple">Cat. mult.</button></th>
+            <th><button data-sort="launch_odds" aria-label="Sort by launch odds">Launch odds</button></th>
+            <th><button data-sort="verdict" aria-label="Sort by verdict">Verdict</button></th>
             <th><button data-sort="implied_value_usd" aria-label="Sort by implied value">Implied value</button></th>
-            <th><button data-sort="token" aria-label="Sort by token status">Token</button></th>
+            <th><button data-sort="band" aria-label="Sort by P25–P75 band">Band P25–P75</button></th>
           </tr>
         </thead>
         <tbody id="rows"></tbody>
       </table>
     </div>
     <p class="empty" id="empty" hidden>No protocol matches this filter.</p>
+    <p class="board-note">Click a protocol name for its full equation, the reasons behind its rank, and its eight-step farm plan. “Pre-token” means the snapshot records no token for it — no market cap, no CoinGecko id, no symbol — never a claim that it has none. Launch odds are the share of comparable protocols that eventually listed; the verdict nets implied value × odds against the cost of farming.</p>
+    <details class="unpriced" id="unpriced" hidden>
+      <summary><span id="unpriced-count">152</span> more protocols record a token but no market cap</summary>
+      <p id="unpriced-list"></p>
+    </details>
+  </section>
+  <section class="model" aria-label="How the ranking works">
+    <h2>How the ranking works</h2>
+    <p>Every number above comes from one sealed snapshot of the protocol universe (<span id="asof">—</span>). The board ranks 290 protocols: every pre-token protocol that is not a wrapped, staked, bridged or exchange product, plus every live-token protocol at its market cap for comparison. A further 152 protocols record a token but no market cap, and 316 products are excluded as wrappers or exchange products — they are listed or explained, never silently dropped.</p>
+    <p class="formula">log mcap = 10.57 + 0.36 × log TVL − 0.10 × growth − 0.12 × log age − 0.15 × log chains + category offset</p>
+    <div class="scatter" id="scatter" role="img" aria-label="Scatter plot of live tokens: market cap against TVL, with the fitted line"></div>
+    <ul>
+      <li><strong>Fitted, not assumed</strong> — a ridge regression (λ = 10, chosen by leave-one-out among 0, 1 and 10) on 92 live tokens, in the log of market cap. The growth term is shrunk hard: the raw fit’s −1.9 is noise, and the ridge keeps only −0.10. Value grows slower than TVL (a doubling of TVL adds 28%), and older protocols are cheaper per TVL dollar.</li>
+      <li><strong>Category offsets</strong> — shrunk mean residuals for categories with at least 3 live tokens (Lending −0.72, Basis Trading +0.64, Privacy +0.56, Cross Chain Bridge +0.39, RWA +0.21, Dexs +0.05, Indexes −0.02, CDP −0.37, Yield −0.46, Yield Aggregator −0.44). A safety clamp keeps every implied value between 0.005× and 2× TVL; it binds on no row.</li>
+      <li><strong>Launch odds</strong> — a life table over the snapshot’s own record. Of protocols tracked 3 years or more, 86% record a token; that is the assumed eventual rate. Still pre-token protocols carry 81% (under 6 months), 78% (6–12 months), 77% (1–2 years) or 63% (2–3 years) of that rate, times a category multiplier from mature protocols (Risk Curators 0.30, Lending 1.27, the rest near 1), floored at 5% and capped at 95%.</li>
+      <li><strong>Verdict</strong> — farm, thin or skip from expected value per dollar: implied value × launch odds, divided by the farm’s cost (capital $50–$250 by TVL tier plus gas $25, or $80 on expensive chains). The board splits into exact thirds on that efficiency. The verdict compares rows with each other; it does not promise dollars. The farmer’s share of any launch is unknown — a skip can still be the biggest launch on the board, it just earns less per dollar than two-thirds of the board.</li>
+    </ul>
+    <p>The live-token tab shows what the market itself says those protocols are worth, for comparison: a live token's market cap is not a model's guess, and the detail view shows what the model would have priced it at. Farm plans are per protocol, with a cost and a time on every step.</p>
   </section>
 </main>
 <dialog id="detail" aria-label="Protocol detail">
@@ -70,7 +108,7 @@
   <div id="detail-body"></div>
 </dialog>
 <footer>
-  <p>Token Radar · model radar-2 · snapshot <span id="asof2">—</span> · source: DefiLlama protocols list · no live data, no network calls.</p>
+  <p>Token Radar · model radar-3 · snapshot <span id="asof2">—</span> · source: DefiLlama protocols list · no live data, no network calls.</p>
 </footer>
 <noscript><p class="noscript">This board needs JavaScript: the data is in data.js and the page renders it locally.</p></noscript>
 <script src="../data.js"></script>
